@@ -1,27 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+}
+
+.card__image::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 100%;
+  height: 100px;
+  background-color: #00000074;
+  filter: blur(18px)
+}
+
+.status__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 100ms ease-out;
+}
+
+.card__image.like, .card__image.slip, .status__overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+.card__image.like .status__overlay {
+  background-color: #88ffa98a;
+}
+
+.card__image.skip .status__overlay {
+  background-color: #f6727275;
+}
+
+.red {
+  background: linear-gradient(180deg, rgba(228, 30, 30, 0.26) 0%, rgba(255, 255, 255, 0.10) 100%);
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.green {
+  background: linear-gradient(180deg, rgba(53, 230, 103, 0.26) 0%, rgba(255, 255, 255, 0.10) 100%);
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.25);
 }

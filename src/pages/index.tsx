@@ -1,118 +1,158 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import Actions from '@/components/Actions';
+import Card from '@/components/Card';
+import Switchbar from '@/components/Switchbar';
+import { useDispatch } from 'react-redux';
+import React, { useEffect, useRef, useState, FC } from 'react';
+import { useTypedSelector } from '@/hooks/useTypedSelector';
+import useActions from '@/hooks/useActions';
+import { GetServerSideProps } from 'next';
 
-const inter = Inter({ subsets: ['latin'] })
+const App: FC<any> = ({ response }) => {
 
-export default function Home() {
+  const gender = useTypedSelector((state) => state.gender.gender);
+  const profiles = useTypedSelector((state) => state.profiles.profiles);
+  const cardIndex = useTypedSelector((state) => state.profiles.cardIndex);
+  const checkedProfiles = useTypedSelector((state) => state.profiles.checkedProfiles);
+  const { setGender, setFilter, setIndex, setItems } = useActions();
+
+  const [cardStatus, setCardStatus] = useState('');
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const wrapperRed = useRef<HTMLDivElement>(null);
+
+  const filteredProfiles = useTypedSelector((state) => state.profiles.filtredProfiles);
+
+  const renderCard = (data: any) => {
+    // setCheck(data.id);
+    return (
+      <Card
+        key={data.id}
+        image={data.photo_max_orig}
+        name={data.first_name}
+        city={data.city}
+        bdate={data.bdate}
+        cardRef={cardRef}
+        status={cardStatus}
+      />
+    );
+  };
+
+  useEffect(() => {
+    const storageGender = localStorage.getItem('gender');
+
+    if (storageGender) {
+      setGender(String(storageGender));
+    }
+
+    setItems(response.sort(() => Math.random() - 0.5));
+  }, []);
+
+  useEffect(() => {
+    if (gender === 'male') {
+      setFilter(profiles.filter((profile: any) => profile.sex === 2));
+    } else {
+      setFilter(profiles.filter((profile: any) => profile.sex === 1));
+    }
+  }, [profiles]);
+
+  useEffect(() => {
+    localStorage.setItem('gender', gender);
+  }, [gender]);
+
+  let swipeX: number = 0;
+  let swipeY: number = 0;
+
+  const handleTouchStart = (e: any) => {
+    const firstTouch = e.touches[0];
+    swipeX = firstTouch.clientX;
+    swipeY = firstTouch.clientY;
+  };
+
+  const cardDismiss = (direction: number = 373) => {
+    document.removeEventListener('touchstart', handleTouchStart);
+    document.removeEventListener('touchmove', handleTouchMove);
+    
+    if (cardRef.current) {
+      console.log(direction);
+      cardRef.current.style.transition = 'transform 5s';
+      cardRef.current.style.translate = `translate(${direction * window.innerWidth}px, 0) rotate(${90 * direction}deg)`;
+
+      setTimeout(() => {
+        setIndex(cardIndex + 1);
+        setCardStatus('');
+      }, 350);
+    }
+  };
+
+  const handleTouchMove = (e: any) => {
+    if (swipeX === 0 || swipeY === 0) {
+      return false;
+    }
+
+    let swipeXMove = e.touches[0].clientX,
+        swipeYMove = e.touches[0].clientY,
+        xDiff = swipeXMove - swipeX,
+        yDiff = swipeYMove - swipeY;
+
+    const rotate = xDiff * 0.8;
+
+    if (Math.abs(xDiff) > Math.abs(yDiff)) {
+      // Движение вправо/влево
+      if (cardRef.current) {
+        cardRef.current.style.transform = `translate(${xDiff * 5}%, 0) rotate(${rotate}deg)`
+        xDiff > 0 ? setCardStatus('like') : setCardStatus('skip');
+      }
+    }
+
+    if (cardRef.current) {
+      if (Math.abs(xDiff) > cardRef.current.clientWidth * 0.01) {
+        cardDismiss(cardRef.current.offsetWidth);
+      }
+    }
+
+    swipeX = 0;
+    swipeY = 0;
+  };
+
+  if (typeof window !== 'undefined') {
+    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchmove', handleTouchMove);
+  }
+
+  // useEffect(() => {
+  //   setFilter(filteredProfiles.filter((item, index) => index !== cardIndex));
+  // }, [cardIndex]);
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+    <div className="px-[15px] mx-auto overflow-hidden">
+      <Switchbar />
+      <div ref={wrapperRed} className="card-wrapper min-h-[464px] relative">
+        {filteredProfiles.map((profile: any, index: number) => {
+          if (index === cardIndex) {
+            return renderCard(profile);
+          }
+        })}
       </div>
+      <Actions onSwipe={cardDismiss}/>
+    </div>
+  );
+};
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+export default App;
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+export const getServerSideProps: GetServerSideProps = async () => {
+  const response = await fetch(`https://api.vk.com/method/groups.getMembers?group_id=91050183&fields=sex,city,photo_max_orig,bdate&access_token=${process.env.API_TOKEN}&v=5.84`)
+  .then((response) => {
+      return response.json();
+  })
+  .then((data) => {
+      return data.response.items;
+  });
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+  return {
+    props: {
+      response: response,
+    }
+  }
+  
 }
