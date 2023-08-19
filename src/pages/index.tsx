@@ -1,11 +1,12 @@
 import Actions from '@/components/Actions';
-import Card from '@/components/Card';
+import Card, { ICard } from '@/components/Card';
 import Switchbar from '@/components/Switchbar';
 import { useDispatch } from 'react-redux';
 import React, { useEffect, useRef, useState, FC } from 'react';
 import { useTypedSelector } from '@/hooks/useTypedSelector';
 import useActions from '@/hooks/useActions';
-import { GetServerSideProps } from 'next';
+import { GetServerSideProps, GetStaticProps } from 'next';
+import Navbar from '@/components/Navbar';
 
 const App: FC<any> = ({ response }) => {
 
@@ -13,7 +14,7 @@ const App: FC<any> = ({ response }) => {
   const profiles = useTypedSelector((state) => state.profiles.profiles);
   const cardIndex = useTypedSelector((state) => state.profiles.cardIndex);
   const checkedProfiles = useTypedSelector((state) => state.profiles.checkedProfiles);
-  const { setGender, setFilter, setIndex, setItems } = useActions();
+  const { setGender, setFilter, setIndex, setItems, setCheck, setFavorites } = useActions();
 
   const [cardStatus, setCardStatus] = useState('');
 
@@ -39,9 +40,14 @@ const App: FC<any> = ({ response }) => {
 
   useEffect(() => {
     const storageGender = localStorage.getItem('gender');
+    const checkedProfiles = JSON.parse(localStorage.getItem('checkedProfiles') || '[]');
 
     if (storageGender) {
       setGender(String(storageGender));
+    }
+
+    if (checkedProfiles) {
+      checkedProfiles.map((item: number) => setCheck(item));
     }
 
     setItems(response.sort(() => Math.random() - 0.5));
@@ -59,6 +65,16 @@ const App: FC<any> = ({ response }) => {
     localStorage.setItem('gender', gender);
   }, [gender]);
 
+  useEffect(() => {
+    localStorage.setItem('checkedProfiles', JSON.stringify(checkedProfiles));
+  }, [checkedProfiles]);
+
+  useEffect(() => {
+    if (cardStatus === 'like') {
+      setFavorites(filteredProfiles[cardIndex]);
+    }
+  }, [cardStatus]);
+
   let swipeX: number = 0;
   let swipeY: number = 0;
 
@@ -68,15 +84,11 @@ const App: FC<any> = ({ response }) => {
     swipeY = firstTouch.clientY;
   };
 
-  const cardDismiss = (direction: number = 373) => {
+  const cardDismiss = () => {
     document.removeEventListener('touchstart', handleTouchStart);
     document.removeEventListener('touchmove', handleTouchMove);
     
     if (cardRef.current) {
-      console.log(direction);
-      cardRef.current.style.transition = 'transform 5s';
-      cardRef.current.style.translate = `translate(${direction * window.innerWidth}px, 0) rotate(${90 * direction}deg)`;
-
       setTimeout(() => {
         setIndex(cardIndex + 1);
         setCardStatus('');
@@ -99,14 +111,14 @@ const App: FC<any> = ({ response }) => {
     if (Math.abs(xDiff) > Math.abs(yDiff)) {
       // Движение вправо/влево
       if (cardRef.current) {
-        cardRef.current.style.transform = `translate(${xDiff * 5}%, 0) rotate(${rotate}deg)`
+        cardRef.current.style.transform = `translate(${xDiff * 5}%, 0) rotate(${rotate}deg)`;
         xDiff > 0 ? setCardStatus('like') : setCardStatus('skip');
       }
     }
 
     if (cardRef.current) {
       if (Math.abs(xDiff) > cardRef.current.clientWidth * 0.01) {
-        cardDismiss(cardRef.current.offsetWidth);
+        cardDismiss();
       }
     }
 
@@ -124,7 +136,7 @@ const App: FC<any> = ({ response }) => {
   // }, [cardIndex]);
 
   return (
-    <div className="px-[15px] mx-auto overflow-hidden">
+    <div className="px-[15px] mx-auto overflow-x-hidden">
       <Switchbar />
       <div ref={wrapperRed} className="card-wrapper min-h-[464px] relative">
         {filteredProfiles.map((profile: any, index: number) => {
@@ -133,7 +145,8 @@ const App: FC<any> = ({ response }) => {
           }
         })}
       </div>
-      <Actions onSwipe={cardDismiss}/>
+      <Actions onSwipe={cardDismiss} cardStatus={setCardStatus} actionElement={cardRef.current ? cardRef.current : undefined}/>
+      <Navbar />
     </div>
   );
 };
@@ -141,7 +154,7 @@ const App: FC<any> = ({ response }) => {
 export default App;
 
 export const getServerSideProps: GetServerSideProps = async () => {
-  const response = await fetch(`https://api.vk.com/method/groups.getMembers?group_id=91050183&fields=sex,city,photo_max_orig,bdate&access_token=${process.env.API_TOKEN}&v=5.84`)
+  const response = await fetch(`https://api.vk.com/method/groups.getMembers?group_id=91050183&count=100&fields=sex,city,photo_max_orig,screen_name,bdate&access_token=${process.env.API_TOKEN}&v=5.84`)
   .then((response) => {
       return response.json();
   })

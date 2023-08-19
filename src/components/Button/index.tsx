@@ -7,15 +7,30 @@ interface IButton {
     children: ReactNode;
     style: string;
     action: () => void;
+    setCardStatus: (status: string) => void;
+    actionElement?: HTMLDivElement;
 }
 
-const Button: React.FC<IButton> = ( {children, style, action} ) => {
-  const { setIndex } = useActions();
-  let cardIndex: number = useTypedSelector(state => state.profiles.cardIndex);
+const Button: React.FC<IButton> = ( {children, style, action, setCardStatus, actionElement} ) => {
+  const filteredProfiles = useTypedSelector((state) => state.profiles.filtredProfiles);
+  const cardIndex = useTypedSelector((state) => state.profiles.cardIndex);
+  const { setCheck, setFavorites } = useActions();
 
   return (
     <button 
       onClick={() => {
+        if (style === 'green') {
+          setCardStatus('like');
+          if (actionElement) {
+            actionElement.style.transform = `translate(300px, 0) rotate(35deg)`;
+          }
+        } else {
+          setCardStatus('skip');
+          if (actionElement) {
+            actionElement.style.transform = `translate(-300px, 0) rotate(-35deg)`;
+          }
+        }
+        setCheck(filteredProfiles[cardIndex].id);
         action();
         // setIndex(cardIndex + 1);
       }}

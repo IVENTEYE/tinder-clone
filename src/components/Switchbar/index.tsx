@@ -37,7 +37,7 @@ const Switchbar: React.FC = () => {
             mooveBar(e);
             setGender('male');
             filterProfiles(2);
-            setIndex(0);
+            // setIndex(0);
           }}
         >
           <IoIosMan size={31}/>
@@ -49,7 +49,7 @@ const Switchbar: React.FC = () => {
             mooveBar(e);
             setGender('female');
             filterProfiles(1);
-            setIndex(0);
+            // setIndex(0);
           }}
         >
           <IoIosWoman size={31}/>
