@@ -7,7 +7,6 @@ interface IInitState {
     checkedProfiles: number[];
     favoriteProfiles: any[];
     cardIndex: number;
-    loading: boolean;
 }
 
 const initialState: IInitState = {
@@ -16,7 +15,6 @@ const initialState: IInitState = {
     checkedProfiles: [],
     favoriteProfiles: [],
     cardIndex: 0,
-    loading: false,
 };
 
 const API_TOKEN = "vk1.a.y30RJW4lLwULuxNr4iujQdWHqj9Aci7nxWDrDUiPKKaaHuh7a4RIcrjPsxAT0VMuqbgmBmgKqleRxnTBTLF_cgB6axhMl27Cz_R82hvox474QjtgCGhUYKvKXCUYsbPsy46177-wwotEMK4IzaDVP8R4XCvVb23-I8EgNpaUWeIdtBiy6z9wYOxtemjOEYso067PIkw3rc2D4QaJ1BR5Vw";
@@ -70,13 +68,8 @@ export const profilesSlice = createSlice({
     },
     extraReducers: builder => {
         builder
-            .addCase(fetchProfiles.pending, (state) => {
-                state.loading = true;
-
-            })
             .addCase(fetchProfiles.fulfilled, (state, action) => {
                 state.profiles = action.payload.sort(() => Math.random() - 0.5);
-                state.loading = false;
             })
     }
 });
