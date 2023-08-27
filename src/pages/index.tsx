@@ -1,30 +1,32 @@
 import Actions from '@/components/Actions';
 import Card, { ICard } from '@/components/Card';
 import Switchbar from '@/components/Switchbar';
-import { useDispatch } from 'react-redux';
-import React, { useEffect, useRef, useState, FC } from 'react';
+import React, { useEffect, useRef, useState, FC, Dispatch } from 'react';
 import { useTypedSelector } from '@/hooks/useTypedSelector';
 import useActions from '@/hooks/useActions';
-import { GetServerSideProps, GetStaticProps } from 'next';
 import Navbar from '@/components/Navbar';
+import { useDispatch } from 'react-redux';
+import { fetchProfiles } from '@/redux/slices/profilesSlice';
+import { AnyAction, ThunkDispatch } from '@reduxjs/toolkit';
+import { TypeRootState } from '@/redux/store';
+export type AppDispatch = Dispatch<AnyAction> & ThunkDispatch<TypeRootState, null, AnyAction> 
 
-const App: FC<any> = ({ response }) => {
+const App: FC<any> = () => {
+  const dispatch = useDispatch<AppDispatch>();
 
   const gender = useTypedSelector((state) => state.gender.gender);
   const profiles = useTypedSelector((state) => state.profiles.profiles);
   const cardIndex = useTypedSelector((state) => state.profiles.cardIndex);
-  const checkedProfiles = useTypedSelector((state) => state.profiles.checkedProfiles);
-  const { setGender, setFilter, setIndex, setItems, setCheck, setFavorites } = useActions();
+  const filterCity = useTypedSelector((state) => state.filters.city);
+  const filterAge = useTypedSelector((state) => state.filters.age);
+  const { setGender, setFilter, setIndex, setFavorites } = useActions();
 
   const [cardStatus, setCardStatus] = useState('');
 
   const cardRef = useRef<HTMLDivElement>(null);
   const wrapperRed = useRef<HTMLDivElement>(null);
 
-  const filteredProfiles = useTypedSelector((state) => state.profiles.filtredProfiles);
-
   const renderCard = (data: any) => {
-    // setCheck(data.id);
     return (
       <Card
         key={data.id}
@@ -40,18 +42,22 @@ const App: FC<any> = ({ response }) => {
 
   useEffect(() => {
     const storageGender = localStorage.getItem('gender');
-    const checkedProfiles = JSON.parse(localStorage.getItem('checkedProfiles') || '[]');
+    const offset = Number(localStorage.getItem('offset'));
 
     if (storageGender) {
       setGender(String(storageGender));
     }
 
-    if (checkedProfiles) {
-      checkedProfiles.map((item: number) => setCheck(item));
+    if (offset) {
+      setIndex(offset);
     }
 
-    setItems(response.sort(() => Math.random() - 0.5));
+    dispatch(fetchProfiles(offset));
+
+    // setItems(response.sort(() => Math.random() - 0.5));
   }, []);
+
+  const filteredProfiles = useTypedSelector((state) => state.profiles.filtredProfiles);
 
   useEffect(() => {
     if (gender === 'male') {
@@ -66,14 +72,14 @@ const App: FC<any> = ({ response }) => {
   }, [gender]);
 
   useEffect(() => {
-    localStorage.setItem('checkedProfiles', JSON.stringify(checkedProfiles));
-  }, [checkedProfiles]);
-
-  useEffect(() => {
     if (cardStatus === 'like') {
       setFavorites(filteredProfiles[cardIndex]);
     }
   }, [cardStatus]);
+
+  useEffect(() => {
+    localStorage.setItem('offset', cardIndex);
+  }, [cardIndex]);
 
   let swipeX: number = 0;
   let swipeY: number = 0;
@@ -87,7 +93,7 @@ const App: FC<any> = ({ response }) => {
   const cardDismiss = () => {
     document.removeEventListener('touchstart', handleTouchStart);
     document.removeEventListener('touchmove', handleTouchMove);
-    
+
     if (cardRef.current) {
       setTimeout(() => {
         setIndex(cardIndex + 1);
@@ -102,9 +108,9 @@ const App: FC<any> = ({ response }) => {
     }
 
     let swipeXMove = e.touches[0].clientX,
-        swipeYMove = e.touches[0].clientY,
-        xDiff = swipeXMove - swipeX,
-        yDiff = swipeYMove - swipeY;
+      swipeYMove = e.touches[0].clientY,
+      xDiff = swipeXMove - swipeX,
+      yDiff = swipeYMove - swipeY;
 
     const rotate = xDiff * 0.8;
 
@@ -131,12 +137,19 @@ const App: FC<any> = ({ response }) => {
     document.addEventListener('touchmove', handleTouchMove);
   }
 
+  // const cardProfiles = filteredProfiles.filter((profile) =>
+  //   profile.city?.title.toLowerCase() === filterCity && filterAge > 0
+  //     ? ageCalc(profile.bdate) === filterAge
+  //     : null,
+  // );
+  // console.log(cardProfiles);
+
   // useEffect(() => {
   //   setFilter(filteredProfiles.filter((item, index) => index !== cardIndex));
   // }, [cardIndex]);
 
   return (
-    <div className="px-[15px] mx-auto overflow-x-hidden">
+    <div className="px-[15px] mx-auto max-w-[485px] overflow-x-hidden">
       <Switchbar />
       <div ref={wrapperRed} className="card-wrapper min-h-[464px] relative">
         {filteredProfiles.map((profile: any, index: number) => {
@@ -145,7 +158,11 @@ const App: FC<any> = ({ response }) => {
           }
         })}
       </div>
-      <Actions onSwipe={cardDismiss} cardStatus={setCardStatus} actionElement={cardRef.current ? cardRef.current : undefined}/>
+      <Actions
+        onSwipe={cardDismiss}
+        cardStatus={setCardStatus}
+        actionElement={cardRef.current ? cardRef.current : undefined}
+      />
       <Navbar />
     </div>
   );
@@ -153,19 +170,20 @@ const App: FC<any> = ({ response }) => {
 
 export default App;
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  const response = await fetch(`https://api.vk.com/method/groups.getMembers?group_id=91050183&count=100&fields=sex,city,photo_max_orig,screen_name,bdate&access_token=${process.env.API_TOKEN}&v=5.84`)
-  .then((response) => {
-      return response.json();
-  })
-  .then((data) => {
-      return data.response.items;
-  });
+// export const getServerSideProps: GetServerSideProps = async () => {
+//   const response = await fetch(
+//     `https://api.vk.com/method/groups.getMembers?group_id=91050183&fields=sex,city,photo_max_orig,screen_name,bdate&access_token=${process.env.API_TOKEN}&v=5.84`,
+//   )
+//     .then((response) => {
+//       return response.json();
+//     })
+//     .then((data) => {
+//       return data.response.items;
+//     });
 
-  return {
-    props: {
-      response: response,
-    }
-  }
-  
-}
+//   return {
+//     props: {
+//       response: response,
+//     },
+//   };
+// };
